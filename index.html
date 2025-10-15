@@ -38,6 +38,11 @@
             font-size: 1.25rem;
             margin-right: 0.5rem;
         }
+        /* 비활성화된 버튼 스타일 */
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-6 md:p-8">
@@ -152,11 +157,14 @@
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // User is signed in.
                         isAuthReady = true;
                         loadRankings();
+                        // 퀴즈 종료 화면에 있을 경우 등록 버튼 활성화
+                        const registerBtn = document.getElementById('register-rank-btn');
+                        if (registerBtn) {
+                            registerBtn.disabled = false;
+                        }
                     } else {
-                        // User is signed out.
                         isAuthReady = false;
                     }
                 });
@@ -169,12 +177,15 @@
 
             } catch (error) {
                 console.error("Firebase 초기화 오류:", error);
-                rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹을 불러오는데 실패했습니다.</p>';
+                rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹 시스템에 연결할 수 없습니다.</p>';
             }
         }
         
         function loadRankings() {
-            if (!isAuthReady) return;
+            if (!isAuthReady) {
+                 rankingListEl.innerHTML = '<li class="text-center text-gray-400">인증 정보를 기다리는 중...</li>';
+                 return;
+            };
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
             const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
@@ -195,21 +206,28 @@
                     rankingListEl.appendChild(li);
                 });
             }, (error) => {
-                 console.error("Error loading rankings:", error);
+                 console.error("랭킹 로딩 오류:", error);
                  rankingListEl.innerHTML = '<li class="text-center text-red-400">랭킹을 불러오는 중 오류가 발생했습니다.</li>';
             });
         }
 
         async function registerRanking() {
-            if (!isAuthReady) {
-                console.error("인증되지 않아 랭킹을 등록할 수 없습니다.");
-                return;
-            }
+            const registerBtn = document.getElementById('register-rank-btn');
+            registerBtn.disabled = true; // 중복 클릭 방지
+
             const messageEl = document.getElementById('register-message');
             if (!selectedEmoji) {
                 messageEl.textContent = '대표 이모지를 선택해주세요.';
                 setTimeout(() => { if(messageEl) messageEl.textContent = ''; }, 2000);
+                registerBtn.disabled = false;
                 return;
+            }
+
+            if (!isAuthReady) {
+                 messageEl.textContent = '아직 등록할 수 없습니다. 잠시만 기다려주세요.';
+                 setTimeout(() => { if(messageEl) messageEl.textContent = ''; }, 2000);
+                 registerBtn.disabled = false;
+                 return;
             }
 
             try {
@@ -223,7 +241,8 @@
                 endGameUi.innerHTML = '<p class="text-green-400 font-bold py-4">랭킹이 등록되었습니다!</p>';
             } catch (error) {
                 console.error("랭킹 등록 오류:", error);
-                 endGameUi.innerHTML = '<p class="text-red-400 font-bold py-4">랭킹 등록에 실패했습니다.</p>';
+                 endGameUi.innerHTML = '<p class="text-red-400 font-bold py-4">랭킹 등록에 실패했습니다. 다시 시도해주세요.</p>';
+                 registerBtn.disabled = false;
             }
         }
 
@@ -289,8 +308,17 @@
             endGameUi.innerHTML = `
                 <div id="emoji-selection" class="space-y-3">${emojiHtml}</div>
                 <p id="register-message" class="text-yellow-400 h-6 mt-2"></p>
-                <button id="register-rank-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-lg transition duration-200 mt-2">랭킹 등록하기</button>
+                <button id="register-rank-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-lg transition duration-200 mt-2" disabled>인증 중...</button>
             `;
+            
+            if(isAuthReady) {
+                const registerBtn = document.getElementById('register-rank-btn');
+                if (registerBtn) {
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = '랭킹 등록하기';
+                }
+            }
+
 
             document.querySelectorAll('.emoji-btn').forEach(btn => {
                 btn.onclick = () => {
