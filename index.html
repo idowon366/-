@@ -3,178 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>법정감염병 암기 게임</title>
+    <title>법정감염병 암기 퀴즈</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
-
         body {
-            font-family: 'Nanum Gothic', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f7ff;
-            color: #333;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 600; /* 세미볼드 */
         }
-
-        #game-container {
-            width: 95%;
-            max-width: 600px;
-            padding: 25px;
-            background-color: #ffffff;
-            border-radius: 15px;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
+        /* 버튼 클릭 시 파란색 외곽선 제거 */
+        .btn:focus, .form-input:focus, #action-button:focus, #register-rank-btn:focus, .emoji-btn:focus {
+            outline: none;
+            box-shadow: none;
+            ring-width: 0;
         }
-
-        h1, h2 {
-            color: #0056b3;
-        }
-
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 8px;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        #question-screen h2 {
-            margin: 20px 0;
-            font-size: 28px;
-            min-height: 80px;
-        }
-
-        #feedback {
-            margin-top: 20px;
-            font-size: 20px;
-            font-weight: bold;
-            height: 30px;
-        }
-
-        #progress {
-            margin-top: 15px;
-            font-size: 16px;
-            color: #555;
-        }
-
-        #result-screen h2, #ranking-screen h2 {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        #emoji-selection {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .emoji-btn {
-            font-size: 28px;
-            padding: 10px;
-            background-color: #e9ecef;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: border-color 0.3s, transform 0.2s;
-        }
-
-        .emoji-btn:hover {
-            transform: scale(1.1);
-        }
-        
-        .emoji-btn.selected {
-            border-color: #007bff;
-        }
-
-        #ranking-list {
-            list-style: none;
-            padding: 0;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
+        /* 랭킹 리스트 스타일 */
         #ranking-list li {
-            background-color: #f8f9fa;
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 5px;
-            font-size: 18px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
         }
-
-        .mode-selection button, .question-count-selection button {
-             width: 150px;
+        #ranking-list li:nth-child(odd) {
+            background-color: rgba(255, 255, 255, 0.05);
         }
-
+        .rank-name {
+            display: flex;
+            align-items: center;
+        }
+        .rank-emoji {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+        }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-6 md:p-8">
 
-    <div id="game-container">
-        <div id="start-screen">
-            <h1>법정감염병 암기 게임 🦠</h1>
-            <h2>모드 선택</h2>
-            <div class="mode-selection">
-                <button onclick="selectMode('practice')">연습 모드</button>
-                <button onclick="selectMode('challenge')">도전 모드</button>
+    <main id="quiz-container" class="bg-gray-800 p-8 rounded-xl shadow-lg flex flex-col justify-between w-full max-w-2xl text-center">
+        <div>
+            <!-- 시작 및 종료 화면 -->
+            <div id="start-screen">
+                <!-- Spacer to align title with quiz question's vertical position -->
+                <div id="start-screen-spacer" class="h-7 mb-6"></div>
+                <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
+                <!-- 이모지 선택 및 랭킹 등록 UI -->
+                <div id="end-game-ui" class="hidden space-y-4 my-6">
+                    <!-- Emoji selection and register button will be injected here -->
+                </div>
+
+                 <!-- 랭킹 표시 -->
+                <div id="ranking-container" class="mt-8 text-left">
+                    <h3 class="text-xl font-bold mb-4 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
+                    <ol id="ranking-list" class="space-y-1"></ol>
+                </div>
             </div>
-            <div id="question-count-selection" class="hidden">
-                <h2>문제 수 선택</h2>
-                <button onclick="startGame(20)">20문제</button>
-                <button onclick="startGame(40)">40문제</button>
+
+            <!-- 퀴즈 화면 (초기에는 숨김) -->
+            <div id="quiz-screen" class="hidden">
+                <!-- 점수 표시 -->
+                <div id="score" class="text-lg text-gray-300 mb-6"></div>
+                <!-- 문제 표시 -->
+                <div class="h-24 flex items-center justify-center mb-6">
+                     <h2 id="disease-name" class="text-2xl md:text-3xl font-semibold text-white"></h2>
+                </div>
+                <!-- 정답/오답 결과 메시지 -->
+                <div id="result" class="h-8 mb-6 text-xl font-bold"></div>
+                <!-- 선택 버튼 -->
+                <div id="buttons" class="grid grid-cols-3 gap-4 mb-6">
+                    <button data-class="1" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg text-xl transition duration-200">1급</button>
+                    <button data-class="2" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-lg text-xl transition duration-200">2급</button>
+                    <button data-class="3" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-lg text-xl transition duration-200">3급</button>
+                </div>
             </div>
         </div>
-
-        <div id="emoji-selection-screen" class="hidden">
-            <h2>랭킹에 사용할 이모지를 선택하세요!</h2>
-            <div id="emoji-selection"></div>
-            <button onclick="confirmEmojiAndStart()">선택 완료</button>
+        
+        <!-- 시작 / 다시 시작 버튼 -->
+        <div id="action-button-container">
+             <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
         </div>
+    </main>
 
-        <div id="question-screen" class="hidden">
-            <p id="progress"></p>
-            <h2 id="question"></h2>
-            <div>
-                <button onclick="checkAnswer(1)">1급</button>
-                <button onclick="checkAnswer(2)">2급</button>
-                <button onclick="checkAnswer(3)">3급</button>
-            </div>
-            <p id="feedback"></p>
-        </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        <div id="result-screen" class="hidden">
-            <h2>게임 종료!</h2>
-            <p id="final-score"></p>
-            <button onclick="restartGame()">처음으로</button>
-            <button onclick="showRanking()">랭킹 보기</button>
-        </div>
-
-        <div id="ranking-screen" class="hidden">
-            <h2>🏆 도전 모드 랭킹 🏆</h2>
-            <ol id="ranking-list"></ol>
-            <button onclick="restartGame()">처음으로</button>
-        </div>
-    </div>
-
-    <script>
         const diseases = [
             // 1급 감염병
             { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
@@ -189,13 +105,257 @@
             { name: '장출혈성대장균감염증', class: 2 }, { name: 'A형간염', class: 2 }, { name: '백일해', class: 2 },
             { name: '유행성이하선염', class: 2 }, { name: '풍진', class: 2 }, { name: '폴리오', class: 2 },
             { name: '수막구균 감염증', class: 2 }, { name: 'b형헤모필루스인플루엔자', class: 2 }, { name: '폐렴구균 감염증', class: 2 },
-            { name: '한센병', class: 2 }, { name: '성홍열', class: 2 }, { name: '반코마이신내성황색포도알균(VRSA) 감염증', class: 2 },
-            { name: '카바페넴내성장내세균속균종(CRE) 감염증', class: 2 }, { name: 'E형간염', class: 2 },
+            { name: '한센병', class: 2 }, { name: '성홍열', class: 2 }, { name: '반코마이신내성황색포도알균(VRSA)감염증', class: 2 },
+            { name: '카바페넴내성장내세균속균종(CRE)감염증', class: 2 }, { name: 'E형간염', class: 2 },
             // 3급 감염병
             { name: '파상풍', class: 3 }, { name: 'B형간염', class: 3 }, { name: '일본뇌염', class: 3 }, { name: 'C형간염', class: 3 },
             { name: '말라리아', class: 3 }, { name: '레지오넬라증', class: 3 }, { name: '비브리오패혈증', class: 3 },
             { name: '발진티푸스', class: 3 }, { name: '발진열', class: 3 }, { name: '쯔쯔가무시증', class: 3 },
             { name: '렙토스피라증', class: 3 }, { name: '브루셀라증', class: 3 }, { name: '공수병', class: 3 },
             { name: '신증후군출혈열', class: 3 }, { name: '후천성면역결핍증(AIDS)', class: 3 },
-            { name: '크로이츠펠트-야콥병(CJD) 및 변종크로이츠펠트-야콥병(vCJD)', class: 3 }, { name: '황열', class: 3 },
-            { name: '뎅기열', class: 3 }, { name: '큐열', class: 3 }, { name: '웨스트나
+            { name: '크로이츠펠트-야콥병(CJD)및변종크로이츠펠트-야콥병(vCJD)', class: 3 },
+            { name: '황열', class: 3 }, { name: '뎅기열', class: 3 }, { name: '큐열', class: 3 }, { name: '웨스트나일열', class: 3 },
+            { name: '라임병', class: 3 }, { name: '진드기매개뇌염', class: 3 }, { name: '유비저', class: 3 },
+            { name: '치쿤구니야열', class: 3 }, { name: '중증열성혈소판감소증후군(SFTS)', class: 3 },
+            { name: '지카바이러스 감염증', class: 3 }, { name: '엠폭스', class: 3 }, { name: '매독', class: 3 }
+        ];
+
+        const startScreen = document.getElementById('start-screen');
+        const startScreenSpacer = document.getElementById('start-screen-spacer');
+        const mainTitle = document.getElementById('main-title');
+        const quizScreen = document.getElementById('quiz-screen');
+        const actionButton = document.getElementById('action-button');
+        const diseaseNameEl = document.getElementById('disease-name');
+        const resultEl = document.getElementById('result');
+        const scoreEl = document.getElementById('score');
+        const buttons = document.querySelectorAll('#buttons .btn');
+        const endGameUi = document.getElementById('end-game-ui');
+        const rankingListEl = document.getElementById('ranking-list');
+        const rankingContainer = document.getElementById('ranking-container');
+        
+        const QUESTION_LIMIT = 30;
+
+        let currentDisease, correctCount, totalCount, answered, quizStarted;
+        let quizDiseases = [];
+        let currentQuestionIndex = -1;
+        let db;
+        let selectedEmoji = null;
+
+        // --- Firebase Setup ---
+        async function setupFirebase() {
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                const auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                loadRankings(appId);
+            } catch (error) {
+                console.error("Firebase 초기화 오류:", error);
+                rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹을 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        function loadRankings(appId) {
+            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+            const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
+
+            onSnapshot(q, (snapshot) => {
+                rankingListEl.innerHTML = '';
+                if (snapshot.empty) {
+                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">아직 등록된 랭킹이 없습니다.</li>';
+                    return;
+                }
+                let rank = 1;
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="rank-name"><span class="rank-emoji">${data.name}</span></span>
+                        <span class="font-bold">${data.score}점</span>
+                    `;
+                    rankingListEl.appendChild(li);
+                });
+            }, (error) => {
+                 console.error("Error loading rankings:", error);
+                 rankingListEl.innerHTML = '<li class="text-center text-red-400">랭킹을 불러오는 중 오류가 발생했습니다.</li>';
+            });
+        }
+
+        async function registerRanking() {
+            if (!selectedEmoji) {
+                alert('대표 이모지를 선택해주세요.');
+                return;
+            }
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+                await addDoc(rankingsCol, {
+                    name: selectedEmoji,
+                    score: correctCount,
+                    timestamp: serverTimestamp()
+                });
+                endGameUi.innerHTML = '<p class="text-green-400 font-bold">랭킹이 등록되었습니다!</p>';
+            } catch (error) {
+                console.error("랭킹 등록 오류:", error);
+                endGameUi.innerHTML = '<p class="text-red-400 font-bold">랭킹 등록에 실패했습니다.</p>';
+            }
+        }
+
+        function resetQuizState() {
+            correctCount = 0;
+            totalCount = 0;
+            currentQuestionIndex = -1;
+            quizDiseases = [...diseases].sort(() => Math.random() - 0.5);
+            quizStarted = false;
+            selectedEmoji = null;
+        }
+
+        function showStartScreen() {
+            resetQuizState();
+            mainTitle.textContent = '법정감염병 암기 퀴즈';
+            quizScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            actionButton.textContent = '시작하기';
+            actionButton.onclick = startQuiz;
+            endGameUi.classList.add('hidden');
+            rankingContainer.classList.add('hidden');
+            startScreenSpacer.classList.remove('hidden');
+        }
+
+        function startQuiz() {
+            resetQuizState();
+            quizStarted = true;
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            actionButton.style.display = 'none';
+            displayNewQuestion();
+        }
+
+        function endQuiz() {
+            quizScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            rankingContainer.classList.remove('hidden');
+            startScreenSpacer.classList.add('hidden');
+            mainTitle.textContent = `퀴즈 종료! ${correctCount} / ${QUESTION_LIMIT}개를 맞추셨습니다!`;
+            
+            endGameUi.classList.remove('hidden');
+            selectedEmoji = null;
+
+            const emojis = {
+                'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'],
+                'Animals': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨'],
+                'More Animals': ['🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦'],
+                'Fruits': ['🍎', '🍊', '🍋', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍'],
+                'Foods': ['🍔', '🍕', '🍟', '🌭', '🍿', '🍩', '🍪', '🎂', '🍦'],
+                'Bugs': ['🐛', '🦋', '🐜', '🐝', '🐞', '🦗', '🕷️', '🦂', '🐌'],
+                'Sports': ['⚽️', '🏀', '🏈', '⚾️', '🎾', '🏐', '🏉', '🎱', '🏓']
+            };
+
+            let emojiHtml = '<p class="text-white mb-3">대표 이모지를 선택하세요</p>';
+            for (const category in emojis) {
+                emojiHtml += '<div class="flex justify-center flex-wrap gap-2 mb-2">';
+                emojis[category].forEach(emoji => {
+                    emojiHtml += `<button class="emoji-btn text-2xl p-2 rounded-full transition duration-200 hover:bg-gray-600">${emoji}</button>`;
+                });
+                emojiHtml += '</div>';
+            }
+
+            endGameUi.innerHTML = `
+                <div id="emoji-selection" class="space-y-3">${emojiHtml}</div>
+                <button id="register-rank-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-lg transition duration-200 mt-4">랭킹 등록하기</button>
+            `;
+
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.emoji-btn').forEach(otherBtn => {
+                        otherBtn.classList.remove('bg-blue-500', 'ring-2', 'ring-blue-300');
+                    });
+                    btn.classList.add('bg-blue-500', 'ring-2', 'ring-blue-300');
+                    selectedEmoji = btn.textContent;
+                };
+            });
+            
+            document.getElementById('register-rank-btn').onclick = registerRanking;
+            
+            actionButton.textContent = '다시 시작하기';
+            actionButton.style.display = 'block';
+            actionButton.onclick = showStartScreen;
+        }
+        
+        function getNewDisease() {
+            currentQuestionIndex++;
+            return quizDiseases[currentQuestionIndex];
+        }
+
+        function displayNewQuestion() {
+            if (totalCount >= QUESTION_LIMIT) {
+                endQuiz();
+                return;
+            }
+            answered = false;
+            currentDisease = getNewDisease();
+            diseaseNameEl.textContent = currentDisease.name;
+            resultEl.textContent = '';
+            buttons.forEach(button => {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+            updateScore();
+        }
+
+        function updateScore() {
+            scoreEl.textContent = `(${totalCount + 1} / ${QUESTION_LIMIT})`;
+        }
+
+        function handleAnswer(selectedClass) {
+            if (answered) return;
+            answered = true;
+            buttons.forEach(button => {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+
+            if (selectedClass === currentDisease.class) {
+                correctCount++;
+                resultEl.textContent = 'O';
+                resultEl.classList.add('text-green-400');
+                resultEl.classList.remove('text-red-400');
+            } else {
+                resultEl.textContent = `X (정답: ${currentDisease.class}급)`;
+                resultEl.classList.add('text-red-400');
+                resultEl.classList.remove('text-green-400');
+            }
+            totalCount++;
+            setTimeout(displayNewQuestion, 900);
+        }
+
+        // --- Event Listeners ---
+        buttons.forEach(button => {
+            button.addEventListener('click', () => handleAnswer(parseInt(button.dataset.class)));
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            if (!quizStarted && e.key === 'Enter') {
+                actionButton.click();
+            }
+            if (quizStarted && !answered && e.key >= '1' && e.key <= '3') {
+                handleAnswer(parseInt(e.key));
+            }
+        });
+
+        // --- Initial Load ---
+        showStartScreen();
+        setupFirebase();
+
+    </script>
+</body>
+</html>
+
