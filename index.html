@@ -14,29 +14,10 @@
             font-weight: 600; /* 세미볼드 */
         }
         /* 버튼 클릭 시 파란색 외곽선 제거 */
-        .btn:focus, .form-input:focus, #action-button:focus, #register-rank-btn:focus, .emoji-btn:focus {
+        .btn:focus, #action-button:focus {
             outline: none;
             box-shadow: none;
             ring-width: 0;
-        }
-        /* 랭킹 리스트 스타일 */
-        #ranking-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.375rem;
-        }
-        #ranking-list li:nth-child(odd) {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-        .rank-name {
-            display: flex;
-            align-items: center;
-        }
-        .rank-emoji {
-            font-size: 1.25rem;
-            margin-right: 0.5rem;
         }
     </style>
 </head>
@@ -49,16 +30,6 @@
                 <!-- Spacer to align title with quiz question's vertical position -->
                 <div id="start-screen-spacer" class="h-7 mb-6"></div>
                 <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
-                <!-- 이모지 선택 및 랭킹 등록 UI -->
-                <div id="end-game-ui" class="hidden space-y-4 my-6">
-                    <!-- Emoji selection and register button will be injected here -->
-                </div>
-
-                 <!-- 랭킹 표시 -->
-                <div id="ranking-container" class="mt-8 text-left">
-                    <h3 class="text-xl font-bold mb-4 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
-                    <ol id="ranking-list" class="space-y-1"></ol>
-                </div>
             </div>
 
             <!-- 퀴즈 화면 (초기에는 숨김) -->
@@ -81,16 +52,12 @@
         </div>
         
         <!-- 시작 / 다시 시작 버튼 -->
-        <div id="action-button-container">
+        <div id="action-button-container" class="mt-auto pt-6">
              <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
         </div>
     </main>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <script>
         const diseases = [
             // 1급 감염병
             { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
@@ -129,86 +96,12 @@
         const resultEl = document.getElementById('result');
         const scoreEl = document.getElementById('score');
         const buttons = document.querySelectorAll('#buttons .btn');
-        const endGameUi = document.getElementById('end-game-ui');
-        const rankingListEl = document.getElementById('ranking-list');
-        const rankingContainer = document.getElementById('ranking-container');
         
         const QUESTION_LIMIT = 30;
 
         let currentDisease, correctCount, totalCount, answered, quizStarted;
         let quizDiseases = [];
         let currentQuestionIndex = -1;
-        let db;
-        let selectedEmoji = null;
-
-        // --- Firebase Setup ---
-        async function setupFirebase() {
-            try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                const auth = getAuth(app);
-
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                loadRankings(appId);
-            } catch (error) {
-                console.error("Firebase 초기화 오류:", error);
-                rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹을 불러오는데 실패했습니다.</p>';
-            }
-        }
-        
-        function loadRankings(appId) {
-            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
-            const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
-
-            onSnapshot(q, (snapshot) => {
-                rankingListEl.innerHTML = '';
-                if (snapshot.empty) {
-                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">아직 등록된 랭킹이 없습니다.</li>';
-                    return;
-                }
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <span class="rank-name"><span class="rank-emoji">${data.name}</span></span>
-                        <span class="font-bold">${data.score}점</span>
-                    `;
-                    rankingListEl.appendChild(li);
-                });
-            }, (error) => {
-                 console.error("Error loading rankings:", error);
-                 rankingListEl.innerHTML = '<li class="text-center text-red-400">랭킹을 불러오는 중 오류가 발생했습니다.</li>';
-            });
-        }
-
-        async function registerRanking() {
-            const messageEl = document.getElementById('register-message');
-            if (!selectedEmoji) {
-                messageEl.textContent = '대표 이모지를 선택해주세요.';
-                setTimeout(() => { messageEl.textContent = ''; }, 2000);
-                return;
-            }
-
-            try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
-                await addDoc(rankingsCol, {
-                    name: selectedEmoji,
-                    score: correctCount,
-                    timestamp: serverTimestamp()
-                });
-                endGameUi.innerHTML = '<p class="text-green-400 font-bold py-4">랭킹이 등록되었습니다!</p>';
-            } catch (error) {
-                console.error("랭킹 등록 오류:", error);
-                 endGameUi.innerHTML = '<p class="text-red-400 font-bold py-4">랭킹 등록에 실패했습니다.</p>';
-            }
-        }
 
         function resetQuizState() {
             correctCount = 0;
@@ -216,7 +109,6 @@
             currentQuestionIndex = -1;
             quizDiseases = [...diseases].sort(() => Math.random() - 0.5);
             quizStarted = false;
-            selectedEmoji = null;
         }
 
         function showStartScreen() {
@@ -226,8 +118,7 @@
             startScreen.classList.remove('hidden');
             actionButton.textContent = '시작하기';
             actionButton.onclick = startQuiz;
-            endGameUi.classList.add('hidden');
-            rankingContainer.classList.add('hidden');
+            actionButton.style.display = 'block';
             startScreenSpacer.classList.remove('hidden');
         }
 
@@ -243,50 +134,8 @@
         function endQuiz() {
             quizScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
-            rankingContainer.classList.remove('hidden');
             startScreenSpacer.classList.add('hidden');
             mainTitle.textContent = `퀴즈 종료! ${correctCount} / ${QUESTION_LIMIT}개를 맞추셨습니다!`;
-            
-            endGameUi.classList.remove('hidden');
-            selectedEmoji = null;
-
-            const emojis = {
-                'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'],
-                'Animals': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨'],
-                'More Animals': ['🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦'],
-                'Fruits': ['🍎', '🍊', '🍋', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍'],
-                'Foods': ['🍔', '🍕', '🍟', '🌭', '🍿', '🍩', '🍪', '🎂', '🍦'],
-                'Bugs': ['🐛', '🦋', '🐜', '🐝', '🐞', '🦗', '🕷️', '🦂', '🐌'],
-                'Sports': ['⚽️', '🏀', '🏈', '⚾️', '🎾', '🏐', '🏉', '🎱', '🏓']
-            };
-
-            let emojiHtml = '<p class="text-white mb-3">대표 이모지를 선택하세요</p>';
-            for (const category in emojis) {
-                emojiHtml += '<div class="flex justify-center flex-wrap gap-2 mb-2">';
-                emojis[category].forEach(emoji => {
-                    emojiHtml += `<button class="emoji-btn text-2xl p-2 rounded-full transition duration-200 hover:bg-gray-600">${emoji}</button>`;
-                });
-                emojiHtml += '</div>';
-            }
-
-            endGameUi.innerHTML = `
-                <div id="emoji-selection" class="space-y-3">${emojiHtml}</div>
-                <p id="register-message" class="text-yellow-400 h-6 mt-2"></p>
-                <button id="register-rank-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-lg transition duration-200 mt-2">랭킹 등록하기</button>
-            `;
-
-            document.querySelectorAll('.emoji-btn').forEach(btn => {
-                btn.onclick = () => {
-                    document.querySelectorAll('.emoji-btn').forEach(otherBtn => {
-                        otherBtn.classList.remove('bg-blue-500', 'ring-2', 'ring-blue-300');
-                    });
-                    btn.classList.add('bg-blue-500', 'ring-2', 'ring-blue-300');
-                    selectedEmoji = btn.textContent;
-                };
-            });
-            
-            document.getElementById('register-rank-btn').onclick = registerRanking;
-            
             actionButton.textContent = '다시 시작하기';
             actionButton.style.display = 'block';
             actionButton.onclick = showStartScreen;
@@ -355,7 +204,6 @@
 
         // --- Initial Load ---
         showStartScreen();
-        setupFirebase();
 
     </script>
 </body>
