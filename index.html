@@ -14,7 +14,7 @@
             font-weight: 600; /* 세미볼드 */
         }
         /* 버튼 클릭 시 파란색 외곽선 제거 */
-        .btn:focus, #action-button:focus, #register-rank-btn:focus, .emoji-btn:focus, #view-ranking-btn:focus {
+        .btn:focus, .form-input:focus, #action-button:focus, #register-rank-btn:focus, .emoji-btn:focus {
             outline: none;
             box-shadow: none;
             ring-width: 0;
@@ -46,21 +46,20 @@
         <div>
             <!-- 시작 및 종료 화면 -->
             <div id="start-screen">
-                <div id="start-screen-content">
-                    <!-- Spacer to align title with quiz question's vertical position -->
-                    <div class="h-7 mb-6"></div>
-                    <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
-                    <!-- 이모지 선택 및 랭킹 등록 UI (종료 시 보임) -->
-                    <div id="end-game-ui" class="hidden space-y-4 my-6">
-                        <!-- Emoji selection and register button will be injected here -->
-                    </div>
+                <!-- Spacer to align title with quiz question's vertical position -->
+                <div id="start-screen-spacer" class="h-7 mb-6"></div>
+                <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
+                <!-- 이모지 선택 및 랭킹 등록 UI -->
+                <div id="end-game-ui" class="hidden space-y-4 my-6">
+                    <!-- Emoji selection and register button will be injected here -->
                 </div>
 
-                 <!-- 랭킹 표시 (토글) -->
-                <div id="ranking-container" class="mt-8 text-left hidden">
-                    <h3 class="text-xl font-bold mb-2 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
-                    <p class="text-center text-gray-400 text-sm mb-4">(랭킹은 매일 자정 초기화됩니다)</p>
-                    <ol id="ranking-list" class="space-y-1"></ol>
+                 <!-- 랭킹 표시 -->
+                <div id="ranking-container" class="mt-8 text-left">
+                    <h3 class="text-xl font-bold mb-4 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
+                    <ol id="ranking-list" class="space-y-1">
+                        <li class="text-center text-gray-400">랭킹을 불러오는 중...</li>
+                    </ol>
                 </div>
             </div>
 
@@ -83,20 +82,19 @@
             </div>
         </div>
         
-        <!-- 버튼 컨테이너 -->
-        <div id="action-button-container" class="mt-auto pt-6 space-y-2">
-             <button id="view-ranking-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">명예의 전당 보기</button>
+        <!-- 시작 / 다시 시작 버튼 -->
+        <div id="action-button-container">
              <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
         </div>
     </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const diseases = [
-            // 감염병 데이터... (생략)
+            // 감염병 데이터 ... (생략)
             { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
             { name: '크리미안콩고출혈열', class: 1 }, { name: '남아메리카출혈열', class: 1 }, { name: '리프트밸리열', class: 1 },
             { name: '두창', class: 1 }, { name: '페스트', class: 1 }, { name: '탄저', class: 1 },
@@ -123,11 +121,10 @@
         ];
 
         const startScreen = document.getElementById('start-screen');
-        const startScreenContent = document.getElementById('start-screen-content');
+        const startScreenSpacer = document.getElementById('start-screen-spacer');
         const mainTitle = document.getElementById('main-title');
         const quizScreen = document.getElementById('quiz-screen');
         const actionButton = document.getElementById('action-button');
-        const viewRankingBtn = document.getElementById('view-ranking-btn');
         const diseaseNameEl = document.getElementById('disease-name');
         const resultEl = document.getElementById('result');
         const scoreEl = document.getElementById('score');
@@ -143,53 +140,53 @@
         let currentQuestionIndex = -1;
         let db;
         let selectedEmoji = null;
+        let isAuthReady = false;
 
         // --- Firebase Setup ---
         async function setupFirebase() {
             try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const firebaseConfig = JSON.parse(__firebase_config);
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 const auth = getAuth(app);
 
-                if (typeof __initial_auth_token !== 'undefined') {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // User is signed in.
+                        isAuthReady = true;
+                        loadRankings();
+                    } else {
+                        // User is signed out.
+                        isAuthReady = false;
+                    }
+                });
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-                loadRankings(appId);
+
             } catch (error) {
                 console.error("Firebase 초기화 오류:", error);
                 rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹을 불러오는데 실패했습니다.</p>';
             }
         }
         
-        function getTodayDateString() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function loadRankings(appId) {
+        function loadRankings() {
+            if (!isAuthReady) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
-            const todayStr = getTodayDateString();
-            const q = query(rankingsCol, where('date', '==', todayStr));
+            const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
 
             onSnapshot(q, (snapshot) => {
                 rankingListEl.innerHTML = '';
                 if (snapshot.empty) {
-                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">오늘의 랭킹이 아직 없습니다.</li>';
+                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">아직 등록된 랭킹이 없습니다.</li>';
                     return;
                 }
-                
-                const rankings = snapshot.docs.map(doc => doc.data());
-                rankings.sort((a, b) => b.score - a.score);
-                const top10 = rankings.slice(0, 10);
-
-                top10.forEach((data) => {
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
                     const li = document.createElement('li');
                     li.innerHTML = `
                         <span class="rank-name"><span class="rank-emoji">${data.name}</span></span>
@@ -204,6 +201,10 @@
         }
 
         async function registerRanking() {
+            if (!isAuthReady) {
+                console.error("인증되지 않아 랭킹을 등록할 수 없습니다.");
+                return;
+            }
             const messageEl = document.getElementById('register-message');
             if (!selectedEmoji) {
                 messageEl.textContent = '대표 이모지를 선택해주세요.';
@@ -217,7 +218,6 @@
                 await addDoc(rankingsCol, {
                     name: selectedEmoji,
                     score: correctCount,
-                    date: getTodayDateString(),
                     timestamp: serverTimestamp()
                 });
                 endGameUi.innerHTML = '<p class="text-green-400 font-bold py-4">랭킹이 등록되었습니다!</p>';
@@ -238,15 +238,14 @@
 
         function showStartScreen() {
             resetQuizState();
-            startScreenContent.classList.remove('hidden');
             mainTitle.textContent = '법정감염병 암기 퀴즈';
             quizScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
             actionButton.textContent = '시작하기';
             actionButton.onclick = startQuiz;
-            actionButton.style.display = 'block';
-            viewRankingBtn.classList.remove('hidden');
-            viewRankingBtn.style.display = 'block';
             endGameUi.classList.add('hidden');
+            rankingContainer.classList.add('hidden');
+            startScreenSpacer.classList.remove('hidden');
         }
 
         function startQuiz() {
@@ -255,16 +254,14 @@
             startScreen.classList.add('hidden');
             quizScreen.classList.remove('hidden');
             actionButton.style.display = 'none';
-            viewRankingBtn.style.display = 'none';
-            rankingContainer.classList.add('hidden');
             displayNewQuestion();
         }
 
         function endQuiz() {
             quizScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
-            startScreenContent.classList.remove('hidden');
             rankingContainer.classList.remove('hidden');
+            startScreenSpacer.classList.add('hidden');
             mainTitle.textContent = `퀴즈 종료! ${correctCount} / ${QUESTION_LIMIT}개를 맞추셨습니다!`;
             
             endGameUi.classList.remove('hidden');
@@ -310,7 +307,6 @@
             actionButton.textContent = '다시 시작하기';
             actionButton.style.display = 'block';
             actionButton.onclick = showStartScreen;
-            viewRankingBtn.style.display = 'none';
         }
         
         function getNewDisease() {
@@ -365,18 +361,6 @@
             button.addEventListener('click', () => handleAnswer(parseInt(button.dataset.class)));
         });
         
-        viewRankingBtn.addEventListener('click', () => {
-            startScreenContent.classList.toggle('hidden');
-            rankingContainer.classList.toggle('hidden');
-            if (rankingContainer.classList.contains('hidden')) {
-                viewRankingBtn.textContent = '명예의 전당 보기';
-                actionButton.textContent = '시작하기';
-            } else {
-                viewRankingBtn.textContent = '퀴즈로 돌아가기';
-                actionButton.textContent = '다시 시작하기';
-            }
-        });
-
         window.addEventListener('keydown', (e) => {
             if (!quizStarted && e.key === 'Enter') {
                 actionButton.click();
@@ -393,4 +377,5 @@
     </script>
 </body>
 </html>
+
 
