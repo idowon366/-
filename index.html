@@ -55,8 +55,9 @@
                 </div>
 
                  <!-- 랭킹 표시 -->
-                <div id="ranking-container" class="mt-8 text-left">
-                    <h3 class="text-xl font-bold mb-4 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
+                <div id="ranking-container" class="mt-8 text-left hidden">
+                    <h3 class="text-xl font-bold mb-2 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
+                    <p class="text-xs text-gray-400 text-center mb-4">랭킹은 매일 00시 기준으로 초기화됩니다.</p>
                     <ol id="ranking-list" class="space-y-1"></ol>
                 </div>
             </div>
@@ -82,7 +83,8 @@
         
         <!-- 시작 / 다시 시작 버튼 -->
         <div id="action-button-container">
-             <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
+            <button id="toggle-ranking-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200 mb-4">명예의 전당</button>
+            <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
         </div>
     </main>
 
@@ -132,6 +134,7 @@
         const endGameUi = document.getElementById('end-game-ui');
         const rankingListEl = document.getElementById('ranking-list');
         const rankingContainer = document.getElementById('ranking-container');
+        const toggleRankingBtn = document.getElementById('toggle-ranking-btn');
         
         const QUESTION_LIMIT = 30;
 
@@ -140,6 +143,19 @@
         let currentQuestionIndex = -1;
         let db;
         let selectedEmoji = null;
+
+        // --- Helper Functions ---
+        function getCurrentDateInKST() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const kstOffset = 9 * 60 * 60000;
+            const kstDate = new Date(utc + kstOffset);
+            const year = kstDate.getFullYear();
+            const month = String(kstDate.getMonth() + 1).padStart(2, '0');
+            const day = String(kstDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
 
         // --- Firebase Setup ---
         async function setupFirebase() {
@@ -163,16 +179,17 @@
         }
         
         function loadRankings(appId) {
-            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings-v2`);
+            const dateStr = getCurrentDateInKST();
+            const collectionPath = `artifacts/${appId}/public/data/rankings-${dateStr}`;
+            const rankingsCol = collection(db, collectionPath);
             const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
 
             onSnapshot(q, (snapshot) => {
                 rankingListEl.innerHTML = '';
                 if (snapshot.empty) {
-                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">아직 등록된 랭킹이 없습니다.</li>';
+                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">오늘의 첫 랭킹에 도전해보세요!</li>';
                     return;
                 }
-                let rank = 1;
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const li = document.createElement('li');
@@ -196,7 +213,9 @@
 
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings-v2`);
+                const dateStr = getCurrentDateInKST();
+                const collectionPath = `artifacts/${appId}/public/data/rankings-${dateStr}`;
+                const rankingsCol = collection(db, collectionPath);
                 await addDoc(rankingsCol, {
                     name: selectedEmoji,
                     score: correctCount,
@@ -225,7 +244,9 @@
             quizScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
             actionButton.textContent = '시작하기';
+            actionButton.style.display = 'block';
             actionButton.onclick = startQuiz;
+            toggleRankingBtn.style.display = 'block';
             endGameUi.classList.add('hidden');
             rankingContainer.classList.add('hidden');
             startScreenSpacer.classList.remove('hidden');
@@ -237,6 +258,7 @@
             startScreen.classList.add('hidden');
             quizScreen.classList.remove('hidden');
             actionButton.style.display = 'none';
+            toggleRankingBtn.style.display = 'none';
             displayNewQuestion();
         }
 
@@ -244,6 +266,7 @@
             quizScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
             rankingContainer.classList.remove('hidden');
+            toggleRankingBtn.style.display = 'none';
             startScreenSpacer.classList.add('hidden');
             mainTitle.textContent = `퀴즈 종료! ${correctCount} / ${QUESTION_LIMIT}개를 맞추셨습니다!`;
             
@@ -339,6 +362,10 @@
         }
 
         // --- Event Listeners ---
+        toggleRankingBtn.addEventListener('click', () => {
+            rankingContainer.classList.toggle('hidden');
+        });
+
         buttons.forEach(button => {
             button.addEventListener('click', () => handleAnswer(parseInt(button.dataset.class)));
         });
