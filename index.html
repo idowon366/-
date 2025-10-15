@@ -5,56 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>법정감염병 암기 게임</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
 
         body {
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'Nanum Gothic', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #121212; /* 검은색 배경 */
-            color: #e0e0e0;
+            background-color: #f0f7ff;
+            color: #333;
         }
 
         #game-container {
             width: 95%;
             max-width: 600px;
             padding: 25px;
-            background-color: #1e1e1e; /* 어두운 회색 컨테이너 */
+            background-color: #ffffff;
             border-radius: 15px;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
             text-align: center;
-            border: 1px solid #00aaff;
         }
 
         h1, h2 {
-            color: #00aaff; /* 파란색 인터페이스 */
-            font-weight: 700;
+            color: #0056b3;
         }
 
         button {
-            background-color: #007acc; /* 파란색 버튼 */
+            background-color: #007bff;
             color: white;
             border: none;
             padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
-            font-family: 'Noto Sans KR', sans-serif;
             margin: 8px;
             transition: background-color 0.3s, transform 0.2s;
         }
 
         button:hover {
-            background-color: #005f9e; /* 호버 시 더 어두운 파란색 */
+            background-color: #0056b3;
             transform: translateY(-2px);
-        }
-        
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
         }
 
         .hidden {
@@ -65,7 +57,6 @@
             margin: 20px 0;
             font-size: 28px;
             min-height: 80px;
-            color: #ffffff;
         }
 
         #feedback {
@@ -78,7 +69,7 @@
         #progress {
             margin-top: 15px;
             font-size: 16px;
-            color: #aaa;
+            color: #555;
         }
 
         #result-screen h2, #ranking-screen h2 {
@@ -97,7 +88,7 @@
         .emoji-btn {
             font-size: 28px;
             padding: 10px;
-            background-color: #333;
+            background-color: #e9ecef;
             border-radius: 50%;
             cursor: pointer;
             border: 2px solid transparent;
@@ -109,7 +100,7 @@
         }
         
         .emoji-btn.selected {
-            border-color: #00aaff;
+            border-color: #007bff;
         }
 
         #ranking-list {
@@ -120,7 +111,7 @@
         }
 
         #ranking-list li {
-            background-color: #2a2a2a;
+            background-color: #f8f9fa;
             padding: 10px;
             margin-bottom: 8px;
             border-radius: 5px;
@@ -128,13 +119,6 @@
             display: flex;
             justify-content: space-between;
         }
-        
-        #ranking-list li:nth-child(1) {
-            background-color: #005f9e;
-            color: #fff;
-            font-weight: bold;
-        }
-
 
         .mode-selection button, .question-count-selection button {
              width: 150px;
@@ -145,3 +129,73 @@
 <body>
 
     <div id="game-container">
+        <div id="start-screen">
+            <h1>법정감염병 암기 게임 🦠</h1>
+            <h2>모드 선택</h2>
+            <div class="mode-selection">
+                <button onclick="selectMode('practice')">연습 모드</button>
+                <button onclick="selectMode('challenge')">도전 모드</button>
+            </div>
+            <div id="question-count-selection" class="hidden">
+                <h2>문제 수 선택</h2>
+                <button onclick="startGame(20)">20문제</button>
+                <button onclick="startGame(40)">40문제</button>
+            </div>
+        </div>
+
+        <div id="emoji-selection-screen" class="hidden">
+            <h2>랭킹에 사용할 이모지를 선택하세요!</h2>
+            <div id="emoji-selection"></div>
+            <button onclick="confirmEmojiAndStart()">선택 완료</button>
+        </div>
+
+        <div id="question-screen" class="hidden">
+            <p id="progress"></p>
+            <h2 id="question"></h2>
+            <div>
+                <button onclick="checkAnswer(1)">1급</button>
+                <button onclick="checkAnswer(2)">2급</button>
+                <button onclick="checkAnswer(3)">3급</button>
+            </div>
+            <p id="feedback"></p>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2>게임 종료!</h2>
+            <p id="final-score"></p>
+            <button onclick="restartGame()">처음으로</button>
+            <button onclick="showRanking()">랭킹 보기</button>
+        </div>
+
+        <div id="ranking-screen" class="hidden">
+            <h2>🏆 도전 모드 랭킹 🏆</h2>
+            <ol id="ranking-list"></ol>
+            <button onclick="restartGame()">처음으로</button>
+        </div>
+    </div>
+
+    <script>
+        const diseases = [
+            // 1급 감염병
+            { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
+            { name: '크리미안콩고출혈열', class: 1 }, { name: '남아메리카출혈열', class: 1 }, { name: '리프트밸리열', class: 1 },
+            { name: '두창', class: 1 }, { name: '페스트', class: 1 }, { name: '탄저', class: 1 },
+            { name: '보툴리눔독소증', class: 1 }, { name: '야토병', class: 1 }, { name: '신종감염병증후군', class: 1 },
+            { name: '중증급성호흡기증후군(SARS)', class: 1 }, { name: '중동호흡기증후군(MERS)', class: 1 },
+            { name: '동물인플루엔자 인체감염증', class: 1 }, { name: '신종인플루엔자', class: 1 }, { name: '디프테리아', class: 1 },
+            // 2급 감염병
+            { name: '결핵', class: 2 }, { name: '수두', class: 2 }, { name: '홍역', class: 2 }, { name: '콜레라', class: 2 },
+            { name: '장티푸스', class: 2 }, { name: '파라티푸스', class: 2 }, { name: '세균성이질', class: 2 },
+            { name: '장출혈성대장균감염증', class: 2 }, { name: 'A형간염', class: 2 }, { name: '백일해', class: 2 },
+            { name: '유행성이하선염', class: 2 }, { name: '풍진', class: 2 }, { name: '폴리오', class: 2 },
+            { name: '수막구균 감염증', class: 2 }, { name: 'b형헤모필루스인플루엔자', class: 2 }, { name: '폐렴구균 감염증', class: 2 },
+            { name: '한센병', class: 2 }, { name: '성홍열', class: 2 }, { name: '반코마이신내성황색포도알균(VRSA) 감염증', class: 2 },
+            { name: '카바페넴내성장내세균속균종(CRE) 감염증', class: 2 }, { name: 'E형간염', class: 2 },
+            // 3급 감염병
+            { name: '파상풍', class: 3 }, { name: 'B형간염', class: 3 }, { name: '일본뇌염', class: 3 }, { name: 'C형간염', class: 3 },
+            { name: '말라리아', class: 3 }, { name: '레지오넬라증', class: 3 }, { name: '비브리오패혈증', class: 3 },
+            { name: '발진티푸스', class: 3 }, { name: '발진열', class: 3 }, { name: '쯔쯔가무시증', class: 3 },
+            { name: '렙토스피라증', class: 3 }, { name: '브루셀라증', class: 3 }, { name: '공수병', class: 3 },
+            { name: '신증후군출혈열', class: 3 }, { name: '후천성면역결핍증(AIDS)', class: 3 },
+            { name: '크로이츠펠트-야콥병(CJD) 및 변종크로이츠펠트-야콥병(vCJD)', class: 3 }, { name: '황열', class: 3 },
+            { name: '뎅기열', class: 3 }, { name: '큐열', class: 3 }, { name: '웨스트나
