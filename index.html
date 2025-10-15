@@ -163,7 +163,7 @@
         }
         
         function loadRankings(appId) {
-            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings-v2`);
             const q = query(rankingsCol, orderBy('score', 'desc'), limit(10));
 
             onSnapshot(q, (snapshot) => {
@@ -196,14 +196,15 @@
 
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings-v2`);
                 await addDoc(rankingsCol, {
                     name: selectedEmoji,
                     score: correctCount,
                     timestamp: serverTimestamp()
                 });
                 endGameUi.innerHTML = '<p class="text-green-400 font-bold">랭킹이 등록되었습니다!</p>';
-            } catch (error) {
+            } catch (error)
+            {
                 console.error("랭킹 등록 오류:", error);
                 endGameUi.innerHTML = '<p class="text-red-400 font-bold">랭킹 등록에 실패했습니다.</p>';
             }
