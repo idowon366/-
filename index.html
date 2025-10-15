@@ -237,7 +237,7 @@
 
             if (selectedClass === currentDisease.class) {
                 correctCount++;
-                resultEl.textContent = 'O';
+                resultEl.textContent = `O (${currentDisease.class}급)`;
                 resultEl.classList.add('text-green-400');
                 resultEl.classList.remove('text-red-400');
             } else {
