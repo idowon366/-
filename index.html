@@ -14,10 +14,29 @@
             font-weight: 600; /* 세미볼드 */
         }
         /* 버튼 클릭 시 파란색 외곽선 제거 */
-        .btn:focus, #action-button:focus {
+        .btn:focus, #action-button:focus, #register-rank-btn:focus, .emoji-btn:focus, #view-ranking-btn:focus {
             outline: none;
             box-shadow: none;
             ring-width: 0;
+        }
+        /* 랭킹 리스트 스타일 */
+        #ranking-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+        #ranking-list li:nth-child(odd) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .rank-name {
+            display: flex;
+            align-items: center;
+        }
+        .rank-emoji {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
         }
     </style>
 </head>
@@ -27,9 +46,22 @@
         <div>
             <!-- 시작 및 종료 화면 -->
             <div id="start-screen">
-                <!-- Spacer to align title with quiz question's vertical position -->
-                <div id="start-screen-spacer" class="h-7 mb-6"></div>
-                <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
+                <div id="start-screen-content">
+                    <!-- Spacer to align title with quiz question's vertical position -->
+                    <div class="h-7 mb-6"></div>
+                    <h1 id="main-title" class="text-3xl md:text-4xl font-bold mb-6">법정감염병 암기 퀴즈</h1>
+                    <!-- 이모지 선택 및 랭킹 등록 UI (종료 시 보임) -->
+                    <div id="end-game-ui" class="hidden space-y-4 my-6">
+                        <!-- Emoji selection and register button will be injected here -->
+                    </div>
+                </div>
+
+                 <!-- 랭킹 표시 (토글) -->
+                <div id="ranking-container" class="mt-8 text-left hidden">
+                    <h3 class="text-xl font-bold mb-2 text-center">🏆 명예의 전당 TOP 10 🏆</h3>
+                    <p class="text-center text-gray-400 text-sm mb-4">(랭킹은 매일 자정 초기화됩니다)</p>
+                    <ol id="ranking-list" class="space-y-1"></ol>
+                </div>
             </div>
 
             <!-- 퀴즈 화면 (초기에는 숨김) -->
@@ -51,22 +83,26 @@
             </div>
         </div>
         
-        <!-- 시작 / 다시 시작 버튼 -->
-        <div id="action-button-container" class="mt-auto pt-6">
+        <!-- 버튼 컨테이너 -->
+        <div id="action-button-container" class="mt-auto pt-6 space-y-2">
+             <button id="view-ranking-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">명예의 전당 보기</button>
              <button id="action-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg transition duration-200">시작하기</button>
         </div>
     </main>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         const diseases = [
-            // 1급 감염병
+            // 감염병 데이터... (생략)
             { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
             { name: '크리미안콩고출혈열', class: 1 }, { name: '남아메리카출혈열', class: 1 }, { name: '리프트밸리열', class: 1 },
             { name: '두창', class: 1 }, { name: '페스트', class: 1 }, { name: '탄저', class: 1 },
             { name: '보툴리눔독소증', class: 1 }, { name: '야토병', class: 1 }, { name: '신종감염병증후군', class: 1 },
             { name: '중증급성호흡기증후군(SARS)', class: 1 }, { name: '중동호흡기증후군(MERS)', class: 1 },
             { name: '동물인플루엔자 인체감염증', class: 1 }, { name: '신종인플루엔자', class: 1 }, { name: '디프테리아', class: 1 },
-            // 2급 감염병
             { name: '결핵', class: 2 }, { name: '수두', class: 2 }, { name: '홍역', class: 2 }, { name: '콜레라', class: 2 },
             { name: '장티푸스', class: 2 }, { name: '파라티푸스', class: 2 }, { name: '세균성이질', class: 2 },
             { name: '장출혈성대장균감염증', class: 2 }, { name: 'A형간염', class: 2 }, { name: '백일해', class: 2 },
@@ -74,7 +110,6 @@
             { name: '수막구균 감염증', class: 2 }, { name: 'b형헤모필루스인플루엔자', class: 2 }, { name: '폐렴구균 감염증', class: 2 },
             { name: '한센병', class: 2 }, { name: '성홍열', class: 2 }, { name: '반코마이신내성황색포도알균(VRSA)감염증', class: 2 },
             { name: '카바페넴내성장내세균속균종(CRE)감염증', class: 2 }, { name: 'E형간염', class: 2 },
-            // 3급 감염병
             { name: '파상풍', class: 3 }, { name: 'B형간염', class: 3 }, { name: '일본뇌염', class: 3 }, { name: 'C형간염', class: 3 },
             { name: '말라리아', class: 3 }, { name: '레지오넬라증', class: 3 }, { name: '비브리오패혈증', class: 3 },
             { name: '발진티푸스', class: 3 }, { name: '발진열', class: 3 }, { name: '쯔쯔가무시증', class: 3 },
@@ -88,20 +123,109 @@
         ];
 
         const startScreen = document.getElementById('start-screen');
-        const startScreenSpacer = document.getElementById('start-screen-spacer');
+        const startScreenContent = document.getElementById('start-screen-content');
         const mainTitle = document.getElementById('main-title');
         const quizScreen = document.getElementById('quiz-screen');
         const actionButton = document.getElementById('action-button');
+        const viewRankingBtn = document.getElementById('view-ranking-btn');
         const diseaseNameEl = document.getElementById('disease-name');
         const resultEl = document.getElementById('result');
         const scoreEl = document.getElementById('score');
         const buttons = document.querySelectorAll('#buttons .btn');
+        const endGameUi = document.getElementById('end-game-ui');
+        const rankingListEl = document.getElementById('ranking-list');
+        const rankingContainer = document.getElementById('ranking-container');
         
         const QUESTION_LIMIT = 30;
 
         let currentDisease, correctCount, totalCount, answered, quizStarted;
         let quizDiseases = [];
         let currentQuestionIndex = -1;
+        let db;
+        let selectedEmoji = null;
+
+        // --- Firebase Setup ---
+        async function setupFirebase() {
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                const auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                loadRankings(appId);
+            } catch (error) {
+                console.error("Firebase 초기화 오류:", error);
+                rankingContainer.innerHTML = '<p class="text-center text-red-400">랭킹을 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        function getTodayDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function loadRankings(appId) {
+            const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+            const todayStr = getTodayDateString();
+            const q = query(rankingsCol, where('date', '==', todayStr));
+
+            onSnapshot(q, (snapshot) => {
+                rankingListEl.innerHTML = '';
+                if (snapshot.empty) {
+                    rankingListEl.innerHTML = '<li class="text-center text-gray-400">오늘의 랭킹이 아직 없습니다.</li>';
+                    return;
+                }
+                
+                const rankings = snapshot.docs.map(doc => doc.data());
+                rankings.sort((a, b) => b.score - a.score);
+                const top10 = rankings.slice(0, 10);
+
+                top10.forEach((data) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="rank-name"><span class="rank-emoji">${data.name}</span></span>
+                        <span class="font-bold">${data.score}점</span>
+                    `;
+                    rankingListEl.appendChild(li);
+                });
+            }, (error) => {
+                 console.error("Error loading rankings:", error);
+                 rankingListEl.innerHTML = '<li class="text-center text-red-400">랭킹을 불러오는 중 오류가 발생했습니다.</li>';
+            });
+        }
+
+        async function registerRanking() {
+            const messageEl = document.getElementById('register-message');
+            if (!selectedEmoji) {
+                messageEl.textContent = '대표 이모지를 선택해주세요.';
+                setTimeout(() => { if(messageEl) messageEl.textContent = ''; }, 2000);
+                return;
+            }
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const rankingsCol = collection(db, `artifacts/${appId}/public/data/rankings`);
+                await addDoc(rankingsCol, {
+                    name: selectedEmoji,
+                    score: correctCount,
+                    date: getTodayDateString(),
+                    timestamp: serverTimestamp()
+                });
+                endGameUi.innerHTML = '<p class="text-green-400 font-bold py-4">랭킹이 등록되었습니다!</p>';
+            } catch (error) {
+                console.error("랭킹 등록 오류:", error);
+                 endGameUi.innerHTML = '<p class="text-red-400 font-bold py-4">랭킹 등록에 실패했습니다.</p>';
+            }
+        }
 
         function resetQuizState() {
             correctCount = 0;
@@ -109,17 +233,20 @@
             currentQuestionIndex = -1;
             quizDiseases = [...diseases].sort(() => Math.random() - 0.5);
             quizStarted = false;
+            selectedEmoji = null;
         }
 
         function showStartScreen() {
             resetQuizState();
+            startScreenContent.classList.remove('hidden');
             mainTitle.textContent = '법정감염병 암기 퀴즈';
             quizScreen.classList.add('hidden');
-            startScreen.classList.remove('hidden');
             actionButton.textContent = '시작하기';
             actionButton.onclick = startQuiz;
             actionButton.style.display = 'block';
-            startScreenSpacer.classList.remove('hidden');
+            viewRankingBtn.classList.remove('hidden');
+            viewRankingBtn.style.display = 'block';
+            endGameUi.classList.add('hidden');
         }
 
         function startQuiz() {
@@ -128,17 +255,62 @@
             startScreen.classList.add('hidden');
             quizScreen.classList.remove('hidden');
             actionButton.style.display = 'none';
+            viewRankingBtn.style.display = 'none';
+            rankingContainer.classList.add('hidden');
             displayNewQuestion();
         }
 
         function endQuiz() {
             quizScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
-            startScreenSpacer.classList.add('hidden');
+            startScreenContent.classList.remove('hidden');
+            rankingContainer.classList.remove('hidden');
             mainTitle.textContent = `퀴즈 종료! ${correctCount} / ${QUESTION_LIMIT}개를 맞추셨습니다!`;
+            
+            endGameUi.classList.remove('hidden');
+            selectedEmoji = null;
+
+            const emojis = {
+                'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'],
+                'Animals': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨'],
+                'More Animals': ['🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦'],
+                'Fruits': ['🍎', '🍊', '🍋', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍'],
+                'Foods': ['🍔', '🍕', '🍟', '🌭', '🍿', '🍩', '🍪', '🎂', '🍦'],
+                'Bugs': ['🐛', '🦋', '🐜', '🐝', '🐞', '🦗', '🕷️', '🦂', '🐌'],
+                'Sports': ['⚽️', '🏀', '🏈', '⚾️', '🎾', '🏐', '🏉', '🎱', '🏓']
+            };
+
+            let emojiHtml = '<p class="text-white mb-3">대표 이모지를 선택하세요</p>';
+            for (const category in emojis) {
+                emojiHtml += '<div class="flex justify-center flex-wrap gap-2 mb-2">';
+                emojis[category].forEach(emoji => {
+                    emojiHtml += `<button class="emoji-btn text-2xl p-2 rounded-full transition duration-200 hover:bg-gray-600">${emoji}</button>`;
+                });
+                emojiHtml += '</div>';
+            }
+
+            endGameUi.innerHTML = `
+                <div id="emoji-selection" class="space-y-3">${emojiHtml}</div>
+                <p id="register-message" class="text-yellow-400 h-6 mt-2"></p>
+                <button id="register-rank-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-lg transition duration-200 mt-2">랭킹 등록하기</button>
+            `;
+
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.emoji-btn').forEach(otherBtn => {
+                        otherBtn.classList.remove('bg-blue-500', 'ring-2', 'ring-blue-300');
+                    });
+                    btn.classList.add('bg-blue-500', 'ring-2', 'ring-blue-300');
+                    selectedEmoji = btn.textContent;
+                };
+            });
+            
+            document.getElementById('register-rank-btn').onclick = registerRanking;
+            
             actionButton.textContent = '다시 시작하기';
             actionButton.style.display = 'block';
             actionButton.onclick = showStartScreen;
+            viewRankingBtn.style.display = 'none';
         }
         
         function getNewDisease() {
@@ -193,6 +365,18 @@
             button.addEventListener('click', () => handleAnswer(parseInt(button.dataset.class)));
         });
         
+        viewRankingBtn.addEventListener('click', () => {
+            startScreenContent.classList.toggle('hidden');
+            rankingContainer.classList.toggle('hidden');
+            if (rankingContainer.classList.contains('hidden')) {
+                viewRankingBtn.textContent = '명예의 전당 보기';
+                actionButton.textContent = '시작하기';
+            } else {
+                viewRankingBtn.textContent = '퀴즈로 돌아가기';
+                actionButton.textContent = '다시 시작하기';
+            }
+        });
+
         window.addEventListener('keydown', (e) => {
             if (!quizStarted && e.key === 'Enter') {
                 actionButton.click();
@@ -204,6 +388,7 @@
 
         // --- Initial Load ---
         showStartScreen();
+        setupFirebase();
 
     </script>
 </body>
