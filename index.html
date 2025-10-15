@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>법정감염병 암기 게임</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
+
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f7ff;
+            color: #333;
+        }
+
+        #game-container {
+            width: 95%;
+            max-width: 600px;
+            padding: 25px;
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1, h2 {
+            color: #0056b3;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #question-screen h2 {
+            margin: 20px 0;
+            font-size: 28px;
+            min-height: 80px;
+        }
+
+        #feedback {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            height: 30px;
+        }
+
+        #progress {
+            margin-top: 15px;
+            font-size: 16px;
+            color: #555;
+        }
+
+        #result-screen h2, #ranking-screen h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #emoji-selection {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .emoji-btn {
+            font-size: 28px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.3s, transform 0.2s;
+        }
+
+        .emoji-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .emoji-btn.selected {
+            border-color: #007bff;
+        }
+
+        #ranking-list {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #ranking-list li {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .mode-selection button, .question-count-selection button {
+             width: 150px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="start-screen">
+            <h1>법정감염병 암기 게임 🦠</h1>
+            <h2>모드 선택</h2>
+            <div class="mode-selection">
+                <button onclick="selectMode('practice')">연습 모드</button>
+                <button onclick="selectMode('challenge')">도전 모드</button>
+            </div>
+            <div id="question-count-selection" class="hidden">
+                <h2>문제 수 선택</h2>
+                <button onclick="startGame(20)">20문제</button>
+                <button onclick="startGame(40)">40문제</button>
+            </div>
+        </div>
+
+        <div id="emoji-selection-screen" class="hidden">
+            <h2>랭킹에 사용할 이모지를 선택하세요!</h2>
+            <div id="emoji-selection"></div>
+            <button onclick="confirmEmojiAndStart()">선택 완료</button>
+        </div>
+
+        <div id="question-screen" class="hidden">
+            <p id="progress"></p>
+            <h2 id="question"></h2>
+            <div>
+                <button onclick="checkAnswer(1)">1급</button>
+                <button onclick="checkAnswer(2)">2급</button>
+                <button onclick="checkAnswer(3)">3급</button>
+            </div>
+            <p id="feedback"></p>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2>게임 종료!</h2>
+            <p id="final-score"></p>
+            <button onclick="restartGame()">처음으로</button>
+            <button onclick="showRanking()">랭킹 보기</button>
+        </div>
+
+        <div id="ranking-screen" class="hidden">
+            <h2>🏆 도전 모드 랭킹 🏆</h2>
+            <ol id="ranking-list"></ol>
+            <button onclick="restartGame()">처음으로</button>
+        </div>
+    </div>
+
+    <script>
+        const diseases = [
+            { name: '에볼라바이러스병', class: 1 }, { name: '마버그열', class: 1 }, { name: '라싸열', class: 1 },
+            { name: '크리미안콩고출혈열', class: 1 }, { name: '남아메리카출혈열', class: 1 }, { name: '리프트밸리열', class: 1 },
+            { name: '두창', class: 1 }, { name: '페스트', class: 1 }, { name: '탄저', class: 1 },
+            { name: '보툴리눔독소증', class: 1 }, { name: '야토병', class: 1 }, { name: '신종감염병증후군', class: 1 },
+            { name: '중증급성호흡기증후군(SARS)', class: 1 }, { name: '중동호흡기증후군(MERS)', class: 1 },
+            { name: '동물인플루엔자 인체감염증', class: 1 }, { name: '신종인플루엔자', class: 1 }, { name: '디프테리아', class: 1 },
+            { name: '결핵', class: 2 }, { name: '수두', class: 2 }, { name: '홍역', class: 2 }, { name: '콜레라', class: 2 },
+            { name: '장티푸스', class: 2 }, { name: '파라티푸스', class: 2 }, { name: '세균성이질', class: 2 },
+            { name: '장출혈성대장균감염증', class: 2 }, { name: 'A형간염', class: 2 }, { name: '백일해', class: 2 },
+            { name: '유행성이하선염', class: 2 }, { name: '풍진', class: 2 }, { name: '폴리오', class: 2 },
+            { name: '수막구균 감염증', class: 2 }, { name: 'b형헤모필루스인플루엔자', class: 2 }, { name: '폐렴구균 감염증', class: 2 },
+            { name: '한센병', class: 2 }, { name: '성홍열', class: 2 }, { name: '반코마이신내성황색포도알균(VRSA) 감염증', class: 2 },
+            { name: '카바페넴내성장내세균속균종(CRE) 감염증', class: 2 }, { name: 'E형간염', class: 2 },
+            { name: '파상풍', class: 3 }, { name: 'B형간염', class: 3 }, { name: '일본뇌염', class: 3 }, { name: 'C형간염', class: 3 },
+            { name: '말라리아', class: 3 }, { name: '레지오넬라증', class: 3 }, { name: '비브리오패혈증', class: 3 },
+            { name: '발진티푸스', class: 3 }, { name: '발진열', class: 3 }, { name: '쯔쯔가무시증', class: 3 },
+            { name: '렙토스피라증', class: 3 }, { name: '브루셀라증', class: 3 }, { name: '공수병', class: 3 },
+            { name: '신증후군출혈열', class: 3 }, { name: '후천성면역결핍증(AIDS)', class: 3 },
+            { name: '크로이츠펠트-야콥병(CJD) 및 변종크로이츠펠트-야콥병(vCJD)', class: 3 }, { name: '황열', class: 3 },
+            { name: '뎅기열', class: 3 }, { name: '큐열', class: 3 }, { name: '웨스트나일열', class: 3 },
+            { name: '라임병', class: 3 }, { name: '진드기매개뇌염', class: 3 }, { name: '유비저', class: 3 },
+            { name: '치쿤구니야열', class: 3 }, { name: '중증열성혈소판감소증후군(SFTS)', class: 3 },
+            { name: '지카바이러스 감염증', class: 3 }, { name: '엠폭스', class: 3 }, { name: '매독', class: 3 }
+        ];
+
+        const emojis = ['❤️', '🍎', '🐶', '🐛', '🦊', '🍀', '🚀', '⭐', '🤖', '👻', '👑', '💡'];
+
+        let currentMode = '';
+        let totalQuestions = 0;
+        let score = 0;
+        let currentQuestionIndex = 0;
+        let questions = [];
+        let selectedEmoji = '';
+        
+        const startScreen = document.getElementById('start-screen');
+        const questionCountSelection = document.getElementById('question-count-selection');
+        const emojiSelectionScreen = document.getElementById('emoji-selection-screen');
+        const questionScreen = document.getElementById('question-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const rankingScreen = document.getElementById('ranking-screen');
+        const feedbackEl = document.getElementById('feedback');
+        const progressEl = document.getElementById('progress');
+
+        function selectMode(mode) {
+            currentMode = mode;
+            questionCountSelection.classList.remove('hidden');
+        }
+
+        function startGame(num) {
+            totalQuestions = num;
+            if (currentMode === 'challenge') {
+                setupEmojiSelection();
+                startScreen.classList.add('hidden');
+                emojiSelectionScreen.classList.remove('hidden');
+            } else {
+                startScreen.classList.add('hidden');
+                questionScreen.classList.remove('hidden');
+                initializeGame();
+            }
+        }
+
+        function setupEmojiSelection() {
+            const container = document.getElementById('emoji-selection');
+            container.innerHTML = '';
+            emojis.forEach(emoji => {
+                const btn = document.createElement('span');
+                btn.className = 'emoji-btn';
+                btn.textContent = emoji;
+                btn.onclick = () => {
+                    document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedEmoji = emoji;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function confirmEmojiAndStart() {
+            if (!selectedEmoji) {
+                alert('이모지를 선택해주세요!');
+                return;
+            }
+            emojiSelectionScreen.classList.add('hidden');
+            questionScreen.classList.remove('hidden');
+            initializeGame();
+        }
+
+        function initializeGame() {
+            score = 0;
+            currentQuestionIndex = 0;
+            questions = [...diseases].sort(() => 0.5 - Math.random()).slice(0, totalQuestions);
+            displayQuestion();
+        }
+
+        function displayQuestion() {
+            if (currentQuestionIndex < totalQuestions) {
+                progressEl.textContent = `문제 ${currentQuestionIndex + 1} / ${totalQuestions}`;
+                document.getElementById('question').textContent = questions[currentQuestionIndex].name;
+                feedbackEl.textContent = '';
+                document.querySelectorAll('#question-screen button').forEach(btn => btn.disabled = false);
+            } else {
+                endGame();
+            }
+        }
+
+        function checkAnswer(selectedClass) {
+            document.querySelectorAll('#question-screen button').forEach(btn => btn.disabled = true);
+            const correctClass = questions[currentQuestionIndex].class;
+            if (selectedClass === correctClass) {
+                score++;
+                feedbackEl.textContent = '정답입니다! ✅';
+                feedbackEl.style.color = 'green';
+            } else {
+                feedbackEl.textContent = `오답입니다. (정답: ${correctClass}급) ❌`;
+                feedbackEl.style.color = 'red';
+            }
+            
+            currentQuestionIndex++;
+            setTimeout(displayQuestion, 1500);
+        }
+
+        function endGame() {
+            questionScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            document.getElementById('final-score').textContent = `총 ${totalQuestions}문제 중 ${score}문제를 맞혔습니다!`;
+
+            if (currentMode === 'challenge') {
+                saveRanking();
+            }
+        }
+        
+        function getRankings() {
+            const rankings = localStorage.getItem('infectionGameRankings');
+            return rankings ? JSON.parse(rankings) : [];
+        }
+
+        function saveRanking() {
+            const rankings = getRankings();
+            let finalName = selectedEmoji;
+            
+            // 중복 이름 처리
+            const existingNames = rankings.map(r => r.name);
+            let count = 1;
+            while(existingNames.includes(finalName)) {
+                count++;
+                finalName = `${selectedEmoji} (${count})`;
+            }
+
+            rankings.push({ name: finalName, score: score, total: totalQuestions });
+            rankings.sort((a, b) => b.score - a.score || a.total - b.total);
+            
+            localStorage.setItem('infectionGameRankings', JSON.stringify(rankings));
+        }
+
+        function showRanking() {
+            resultScreen.classList.add('hidden');
+            rankingScreen.classList.remove('hidden');
+
+            const rankingList = document.getElementById('ranking-list');
+            rankingList.innerHTML = '';
+            const rankings = getRankings();
+
+            if (rankings.length === 0) {
+                rankingList.innerHTML = '<li>아직 랭킹이 없습니다.</li>';
+            } else {
+                rankings.forEach((entry, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${index + 1}. ${entry.name}</span> <span>${entry.score} / ${entry.total}</span>`;
+                    rankingList.appendChild(li);
+                });
+            }
+        }
+
+        function restartGame() {
+            resultScreen.classList.add('hidden');
+            rankingScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            questionCountSelection.classList.add('hidden');
+            selectedEmoji = '';
+        }
+
+    </script>
+</body>
+</html>
